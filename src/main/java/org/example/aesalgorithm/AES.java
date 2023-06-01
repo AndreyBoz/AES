@@ -2,16 +2,16 @@ package org.example.aesalgorithm;
 
 
 
-import java.security.InvalidKeyException;
-import java.security.Key;
+import java.util.ArrayList;
 import java.util.Arrays;
-
+import java.util.List;
+import java.nio.ByteBuffer;
 public class AES {
     private byte[] data;
     private byte[] key;
     private int opmode;
-    private byte[] encrypt;
-    private byte[] decript;
+    private byte[] encrypt = new byte[0];
+    private byte[] decript = new byte[0];
     public static final int ENCRYPT_MODE = 1;
     public static final int DECRYPT_MODE = 2;
 
@@ -20,6 +20,7 @@ public class AES {
     private final int Nb =4; // число столбцов
     private final int Nk = 4;
     private byte[][] keyShedule = new byte[4*(Nb+1)][Nb];
+    private final int chunkSize = 16;
     private final byte[][] sBox = {
             {(byte) 0x63, (byte) 0x7C, (byte) 0x77, (byte) 0x7B, (byte) 0xF2, (byte) 0x6B, (byte) 0x6F, (byte) 0xC5, (byte) 0x30, (byte) 0x01, (byte) 0x67, (byte) 0x2B, (byte) 0xFE, (byte) 0xD7, (byte) 0xAB, (byte) 0x76},
             {(byte) 0xCA, (byte) 0x82, (byte) 0xC9, (byte) 0x7D, (byte) 0xFA, (byte) 0x59, (byte) 0x47, (byte) 0xF0, (byte) 0xAD, (byte) 0xD4, (byte) 0xA2, (byte) 0xAF, (byte) 0x9C, (byte) 0xA4, (byte) 0x72, (byte) 0xC0},
@@ -85,10 +86,69 @@ public class AES {
         this.key = key;
         this.opmode = opmode;
         if(opmode==1){
-            this.encrypt = getEncrypt(input,key);
+            if(input.length>16) {
+                List<byte[]> chunks = new ArrayList<>();
+                for (int i = 0; i < input.length; i += chunkSize) {
+                    int end = Math.min(input.length, i + chunkSize);
+                    byte[] chunk = Arrays.copyOfRange(input, i, end);
+
+                    // Если размер блока меньше 16 байт, заполнить оставшееся место нулями
+                    if (chunk.length < chunkSize) {
+                        byte[] paddedChunk = new byte[chunkSize];
+                        System.arraycopy(chunk, 0, paddedChunk, 0, chunk.length);
+                        chunk = paddedChunk;
+                    }
+
+                    chunks.add(chunk);
+                }
+                for (int i = 0; i < chunks.size(); i++) {
+                    byte[] encryptedChunk = getEncrypt(chunks.get(i), key);
+                    encrypt = concatenateByteArrays(encrypt, encryptedChunk);
+                }
+            }else
+                this.encrypt = getEncrypt(input,key);
         }else if(opmode ==2){
-            this.decript = getDecrypt(input,key);
+            if(input.length>16) {
+                List<byte[]> chunks = new ArrayList<>();
+                for (int i = 0; i < input.length; i += chunkSize) {
+                    int end = Math.min(input.length, i + chunkSize);
+                    byte[] chunk = Arrays.copyOfRange(input, i, end);
+
+                    // Если размер блока меньше 16 байт, заполнить оставшееся место нулями
+                    if (chunk.length < chunkSize) {
+                        byte[] paddedChunk = new byte[chunkSize];
+                        System.arraycopy(chunk, 0, paddedChunk, 0, chunk.length);
+                        chunk = paddedChunk;
+                    }
+
+                    chunks.add(chunk);
+                }
+                for (int i = 0; i < chunks.size(); i++) {
+                    byte[] descryptedChunk = removeZeros(getDecrypt(chunks.get(i), key));
+                    decript = concatenateByteArrays(decript, descryptedChunk);
+                }
+            }else
+                this.decript = removeZeros(getDecrypt(input,key));
+
         }
+    }
+    public byte[] removeZeros(byte[] input) {
+        ByteBuffer buffer = ByteBuffer.allocate(input.length);
+        for (byte b : input) {
+            if (b != 0) {
+                buffer.put(b);
+            }
+        }
+        buffer.flip();
+        byte[] result = new byte[buffer.remaining()];
+        buffer.get(result);
+        return result;
+    }
+    private byte[] concatenateByteArrays(byte[] a, byte[] b) {
+        byte[] result = new byte[a.length + b.length];
+        System.arraycopy(a, 0, result, 0, a.length);
+        System.arraycopy(b, 0, result, a.length, b.length);
+        return result;
     }
     private byte[] getEncrypt(byte[] input, byte[] key) {
         byte[][] state = new byte[4][Nb];
@@ -98,8 +158,6 @@ public class AES {
                 state[i][j] = (byte) (input[4*i+j] & 0xFF);
             }
         }
-        System.out.println("En first");
-        Sout(state);
         // Расширение ключа
         byte[][] expandedKey = keyExpansion(key);
 
@@ -131,8 +189,6 @@ public class AES {
                 output[i * 4 + j] = state[i][j];
             }
         }
-        System.out.println("En sec");
-        Sout(state);
         return output;
     }
 
@@ -144,8 +200,6 @@ public class AES {
                 state[i][j] = (byte) (input[i*Nb + j] & 0xFF);
             }
         }
-        System.out.println("Dec first");
-        Sout(state);
         // Расширение ключа
         byte[][] expandedKey = keyExpansion(key);
 
@@ -179,8 +233,6 @@ public class AES {
                 output[i *Nb+ j] = state[i][j];
             }
         }
-        System.out.println("Dec sec");
-        Sout(state);
         return output;
     }
 

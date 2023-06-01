@@ -32,8 +32,8 @@ public class Main {
             {(byte) 0x8C, (byte) 0xA1, (byte) 0x89, (byte) 0x0D, (byte) 0xBF, (byte) 0xE6, (byte) 0x42, (byte) 0x68, (byte) 0x41, (byte) 0x99, (byte) 0x2D, (byte) 0x0F, (byte) 0xB0, (byte) 0x54, (byte) 0xBB, (byte) 0x16}
     };
     public static void main(String[] args) throws Exception {
-        String s = "hello world!!!!!";
-
+        String s = "hello world!!!!!hello world!!!!!hello world!";
+        System.out.println(s.length());
         AES aes = new AES(s.getBytes(), "Bra12345Bra12345".getBytes(),1);
 
         for(int i = 0;i<aes.getEncrypt().length;i++){
